@@ -20,7 +20,7 @@ dependencies = [
     "pydantic >= 2.10.0",
     "requests",
     "rfc3986",
-    "sigstore >= 3.5.3, < 3.7",
+    "sigstore >= 3.5.3, < 4.1",
     "sigstore-protobuf-specs",
 ]
 requires-python = ">=3.9"
