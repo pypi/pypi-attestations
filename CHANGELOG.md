@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.28]
+
+### Changed
+
+- Upgraded `sigstore` dependency to `>=4.0.0`. Since version `4.0.0`,
+  `sigstore` supports signing using the new Rekor v2 instance, which
+  will become the default in the future. We force the version to 1,
+  so any attestations created with `pypi-attestations==0.0.28` will
+  still contain Rekor v1 entries.
+- Repository has been moved to the `pypi` GitHub org. The new URL
+  is https://github.com/pypi/pypi-attestations.
+
 ## [0.0.27]
 
 ### Fixed
@@ -315,7 +327,8 @@ This is a corrective release for [0.0.14].
 
 - Initial implementation
 
-[Unreleased]: https://github.com/pypi/pypi-attestations/compare/v0.0.27...HEAD
+[Unreleased]: https://github.com/pypi/pypi-attestations/compare/v0.0.28...HEAD
+[0.0.28]: https://github.com/pypi/pypi-attestations/compare/v0.0.27...v0.0.28
 [0.0.27]: https://github.com/pypi/pypi-attestations/compare/v0.0.26...v0.0.27
 [0.0.26]: https://github.com/pypi/pypi-attestations/compare/v0.0.25...v0.0.26
 [0.0.25]: https://github.com/pypi/pypi-attestations/compare/v0.0.24...v0.0.25
