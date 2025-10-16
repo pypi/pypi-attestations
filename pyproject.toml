@@ -10,6 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Trail of Bits", email = "opensource@trailofbits.com" }]
+maintainers = [{ name = "PyPI Admins", email = "admin@pypi.org" }]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "cryptography",
@@ -48,9 +49,9 @@ pypi-attestations = "pypi_attestations._cli:main"
 
 [project.urls]
 Homepage = "https://pypi.org/project/pypi-attestations"
-Documentation = "https://trailofbits.github.io/pypi-attestations/"
-Issues = "https://github.com/trailofbits/pypi-attestations/issues"
-Source = "https://github.com/trailofbits/pypi-attestations"
+Documentation = "https://pypi.github.io/pypi-attestations/"
+Issues = "https://github.com/pypi/pypi-attestations/issues"
+Source = "https://github.com/pypi/pypi-attestations"
 
 [tool.flit.module]
 name = "pypi_attestations"

@@ -1,7 +1,7 @@
 # pypi-attestations
 
 <!--- BADGES: START --->
-[![CI](https://github.com/trailofbits/pypi-attestations/actions/workflows/tests.yml/badge.svg)](https://github.com/trailofbits/pypi-attestations/actions/workflows/tests.yml)
+[![CI](https://github.com/pypi/pypi-attestations/actions/workflows/tests.yml/badge.svg)](https://github.com/pypi/pypi-attestations/actions/workflows/tests.yml)
 [![PyPI version](https://badge.fury.io/py/pypi-attestations.svg)](https://pypi.org/project/pypi-attestations)
 [![Packaging status](https://repology.org/badge/tiny-repos/python:pypi-attestations.svg)](https://repology.org/project/python:pypi-attestations/versions)
 <!--- BADGES: END --->
@@ -200,9 +200,9 @@ limitations under the License.
 
 [PEP 740]: https://peps.python.org/pep-0740/
 
-[here]: https://trailofbits.github.io/pypi-attestations
+[here]: https://pypi.github.io/pypi-attestations
 
-[public Python APIs]: https://trailofbits.github.io/pypi-attestations
+[public Python APIs]: https://pypi.github.io/pypi-attestations
 
 [the official PyPA publishing action]: https://github.com/pypa/gh-action-pypi-publish
 

@@ -296,7 +296,7 @@ class Attestation(BaseModel):
             # and caused confusion for users who expected the subject to
             # be an exact match for their distribution filename.
             # See: https://github.com/pypi/warehouse/issues/18128
-            # See: https://github.com/trailofbits/pypi-attestations/issues/123
+            # See: https://github.com/pypi/pypi-attestations/issues/123
             parsed_subject_name = _check_dist_filename(subject.name)
         except ValueError as e:
             raise VerificationError(f"invalid subject: {str(e)}")
