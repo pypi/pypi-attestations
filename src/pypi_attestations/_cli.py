@@ -430,6 +430,9 @@ def _sign(args: argparse.Namespace) -> None:
         _die(f"Failed to detect identity: {identity_error}")
 
     trust_config = ClientTrustConfig.staging() if args.staging else ClientTrustConfig.production()
+    # Make sure we choose the rekor version: currently v1
+    trust_config.force_tlog_version = 1
+
     signing_ctx = SigningContext.from_trust_config(trust_config)
 
     # Validates that every file we want to sign exist but none of their attestations

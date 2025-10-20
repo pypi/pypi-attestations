@@ -76,12 +76,18 @@ class TestAttestation:
     @online
     def test_roundtrip(self, id_token: IdentityToken) -> None:
         trust_config = ClientTrustConfig.staging()
+        # Make sure we choose the rekor version: currently v1
+        trust_config.force_tlog_version = 1
         sign_ctx = SigningContext.from_trust_config(trust_config)
 
         with sign_ctx.signer(id_token) as signer:
             attestation = impl.Attestation.sign(signer, dist)
 
         attestation.verify(policy.UnsafeNoOp(), dist, staging=True)
+
+        # ensure we only produce attestations with rekor v1 entries for now:
+        for entry in attestation.verification_material.transparency_entries:
+            assert entry["kindVersion"] == {"kind": "dsse", "version": "0.0.1"}
 
         # converting to a bundle and verifying as a bundle also works
         bundle = attestation.to_bundle()
@@ -111,6 +117,8 @@ class TestAttestation:
         monkeypatch.setattr(IdentityToken, "in_validity_period", in_validity_period)
 
         trust_config = ClientTrustConfig.staging()
+        # Make sure we choose the rekor version: currently v1
+        trust_config.force_tlog_version = 1
         sign_ctx = SigningContext.from_trust_config(trust_config)
 
         with sign_ctx.signer(id_token, cache=False) as signer:
@@ -130,6 +138,8 @@ class TestAttestation:
         monkeypatch.setattr(sigstore.sign.Signer, "sign_dsse", get_bundle)
 
         trust_config = ClientTrustConfig.staging()
+        # Make sure we choose the rekor version: currently v1
+        trust_config.force_tlog_version = 1
         sign_ctx = SigningContext.from_trust_config(trust_config)
 
         with pytest.raises(impl.AttestationError):
@@ -240,6 +250,9 @@ class TestAttestation:
         Verifier.production(offline=True).verify_dsse(bundle, policy.UnsafeNoOp())
 
     def test_verify_with_timestamp_and_rekor2_entry(self) -> None:
+        # Note that the pypi-attestations does not currently create attestatations with rekor2
+        # entries. This test still asserts that verification works
+
         # Our checked-in asset has this identity.
         pol = policy.Identity(identity="jku@goto.fi", issuer="https://github.com/login/oauth")
 
