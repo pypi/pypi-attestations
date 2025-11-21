@@ -8,7 +8,7 @@ from __future__ import annotations
 import base64
 import json
 from enum import Enum
-from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, Optional, Union, get_args
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType
 
 import packaging
 import packaging.tags
@@ -238,7 +238,7 @@ class Attestation(BaseModel):
         *,
         staging: bool = False,
         offline: bool = False,
-    ) -> tuple[str, Optional[dict[str, Any]]]:
+    ) -> tuple[str, dict[str, Any] | None]:
         """Verify against an existing Python distribution.
 
         The `identity` can be an object confirming to
@@ -257,8 +257,7 @@ class Attestation(BaseModel):
         # NOTE: Can't do `isinstance` with `Publisher` since it's
         # a `_GenericAlias`; instead we punch through to the inner
         # `_Publisher` union.
-        # Use of typing.get_args is needed for Python < 3.10
-        if isinstance(identity, get_args(_Publisher)):
+        if isinstance(identity, _Publisher):
             policy = identity._as_policy()  # noqa: SLF001
         else:
             policy = identity
@@ -412,7 +411,7 @@ _BdistName = tuple[
     packaging.utils.BuildTag,
     frozenset[packaging.tags.Tag],
 ]
-_DistName = Union[_SdistName, _BdistName]
+_DistName = _SdistName | _BdistName
 
 
 def _check_dist_filename(dist: str) -> _DistName:
@@ -544,7 +543,7 @@ class GitHubPublisher(_PublisherBase):
     action.
     """
 
-    environment: Optional[str] = None
+    environment: str | None = None
     """
     The optional name GitHub Actions environment that the publishing
     action was performed from.
@@ -637,7 +636,7 @@ class GitLabPublisher(_PublisherBase):
     but can be customized.
     """
 
-    environment: Optional[str] = None
+    environment: str | None = None
     """
     The optional environment that the publishing action was performed from.
     """
@@ -661,7 +660,7 @@ class GooglePublisher(_PublisherBase):
         return policy.Identity(identity=self.email, issuer="https://accounts.google.com")
 
 
-_Publisher = Union[GitHubPublisher, GitLabPublisher, GooglePublisher]
+_Publisher = GitHubPublisher | GitLabPublisher | GooglePublisher
 Publisher = Annotated[_Publisher, Field(discriminator="kind")]
 
 
