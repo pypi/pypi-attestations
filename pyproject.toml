@@ -107,6 +107,6 @@ pyupgrade.keep-runtime-typing = true
 [tool.interrogate]
 # don't enforce documentation coverage for packaging, testing, the virtual
 # environment, or the CLI (which is documented separately).
-exclude = ["env", "test", "src/pypi_attestations/__main__.py"]
+exclude = [".venv", "test", "src/pypi_attestations/__main__.py"]
 ignore-semiprivate = true
 fail-under = 100

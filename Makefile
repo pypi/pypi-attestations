@@ -6,7 +6,7 @@ ALL_PY_SRCS := $(shell find src -name '*.py') \
 	$(shell find test -name '*.py')
 
 # Optionally overriden by the user, if they're using a virtual environment manager.
-VENV ?= env
+VENV ?= .venv
 
 # On Windows, venv scripts/shims are under `Scripts` instead of `bin`.
 VENV_BIN := $(VENV)/bin
@@ -45,7 +45,7 @@ dev: $(VENV)/pyvenv.cfg
 
 $(VENV)/pyvenv.cfg: pyproject.toml
 	# Create our Python 3 virtual environment
-	python3 -m venv env
+	python3 -m venv $(VENV)
 	$(VENV_BIN)/python -m pip install --upgrade pip
 	$(VENV_BIN)/python -m pip install -e .[$(INSTALL_EXTRA)]
 
