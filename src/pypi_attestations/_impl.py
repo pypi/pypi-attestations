@@ -24,6 +24,7 @@ from pyasn1.type.char import UTF8String
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_snake
 from pydantic_core import ValidationError
+from rfc3161_client import decode_timestamp_response
 from sigstore._utils import _sha256_streaming
 from sigstore.dsse import DigestSet, StatementBuilder, Subject, _Statement
 from sigstore.dsse import Envelope as DsseEnvelope
@@ -136,6 +137,7 @@ class VerificationError(AttestationError):
 
 
 TransparencyLogEntry = NewType("TransparencyLogEntry", dict[str, Any])
+Timestamp = NewType("Timestamp", bytes)
 
 
 class VerificationMaterial(BaseModel):
@@ -150,6 +152,11 @@ class VerificationMaterial(BaseModel):
     """
     One or more transparency log entries for this attestation's signature
     and certificate.
+    """
+
+    timestamps: list[Timestamp] = []
+    """
+    list of RFC3161 timestamps. List may be empty if all transparency entries are rekor v1.
     """
 
 
@@ -346,10 +353,16 @@ class Attestation(BaseModel):
         except (ValidationError, sigstore.errors.Error) as err:
             raise ConversionError("invalid transparency log entry") from err
 
+        timestamps = [
+            decode_timestamp_response(base64.b64decode(t))
+            for t in self.verification_material.timestamps
+        ]
+
         return Bundle._from_parts(  # noqa: SLF001
             cert=certificate,
             content=evp,
             log_entry=log_entry,
+            signed_timestamp=timestamps,
         )
 
     @classmethod
@@ -367,6 +380,11 @@ class Attestation(BaseModel):
         if len(envelope.signatures) != 1:
             raise ConversionError(f"expected exactly one signature, got {len(envelope.signatures)}")
 
+        timestamps = []
+        if sigstore_bundle.verification_material.timestamp_verification_data:
+            ts_data = sigstore_bundle.verification_material.timestamp_verification_data
+            timestamps = [base64.b64encode(ts.as_bytes()) for ts in ts_data.rfc3161_timestamps]
+
         return cls(
             version=1,
             verification_material=VerificationMaterial(
@@ -374,6 +392,7 @@ class Attestation(BaseModel):
                 transparency_entries=[
                     sigstore_bundle.log_entry._inner.to_dict()  # noqa: SLF001
                 ],
+                timestamps=timestamps,
             ),
             envelope=Envelope(
                 statement=base64.b64encode(envelope.payload),

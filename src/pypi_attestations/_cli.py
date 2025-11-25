@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import logging
 import typing
@@ -20,6 +21,7 @@ from packaging.utils import (
     parse_wheel_filename,
 )
 from pydantic import ValidationError
+from rfc3161_client import decode_timestamp_response
 from rfc3986 import exceptions, uri_reference, validators
 from sigstore.models import Bundle, ClientTrustConfig, InvalidBundle
 from sigstore.oidc import IdentityError, IdentityToken, Issuer
@@ -428,7 +430,7 @@ def _sign(args: argparse.Namespace) -> None:
         _die(f"Failed to detect identity: {identity_error}")
 
     trust_config = ClientTrustConfig.staging() if args.staging else ClientTrustConfig.production()
-    # Make sure we use rekor v1 until attestations are compatible with v2
+    # Make sure we choose the rekor version: currently v1
     trust_config.force_tlog_version = 1
 
     signing_ctx = SigningContext.from_trust_config(trust_config)
@@ -464,7 +466,7 @@ def _inspect(args: argparse.Namespace) -> None:
 
     Warning: The information displayed from the attestations are not verified.
     """
-    attestation_files = [f for f in args.files if f.suffix == ".attestation"]
+    attestation_files = args.files
     _validate_files(attestation_files, should_exist=True)
     for file_path in attestation_files:
         try:
@@ -513,6 +515,14 @@ def _inspect(args: argparse.Namespace) -> None:
         )
         for idx, entry in enumerate(verification_material.transparency_entries):
             _logger.info(f"\tLog Index: {entry['logIndex']}")
+            kv = entry["kindVersion"]
+            _logger.info(f"\tEntry type: {kv['kind']} {kv['version']}")
+
+        # Timestamps
+        _logger.info(f"Timestamps ({len(verification_material.timestamps)}):")
+        for data in verification_material.timestamps:
+            ts = decode_timestamp_response(base64.b64decode(data))
+            _logger.info(f"\tTime: {ts.tst_info.gen_time}")
 
 
 def _verify_attestation(args: argparse.Namespace) -> None:

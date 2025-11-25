@@ -61,6 +61,4 @@ jobs:
         run: sudo apt-get install -y firejail
 
       - name: run tests offline
-        run: |
-          make dev INSTALL_EXTRA=test
-          firejail --noprofile --net=none --env=TEST_OFFLINE=1 make test-nocoverage
+        run: make test-offline INSTALL_EXTRA=test

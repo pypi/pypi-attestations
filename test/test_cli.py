@@ -36,6 +36,10 @@ artifact_path = _ASSETS / "pypi_attestations-0.0.19.tar.gz"
 publish_attestation_identity = "https://github.com/trailofbits/pypi-attestations/.github/workflows/release.yml@refs/tags/v0.0.19"
 publish_attestation_path = _ASSETS / "pypi_attestations-0.0.19.tar.gz.publish.attestation"
 slsa_attestation_path = _ASSETS / "pypi_attestations-0.0.19.tar.gz.slsa.attestation"
+rekor2_attestation_path = (
+    _ASSETS / "pypi_attestations-0.0.19.tar.gz.publish.attestation.with_rekor2_timestamp"
+)
+
 
 pypi_wheel_url = "https://files.pythonhosted.org/packages/fb/f2/3e026065773b84c5b2345e2548a08b10105d324b9b95c72643f57a25fcbb/pypi_attestations-0.0.19-py3-none-any.whl"
 pypi_sdist_url = "https://files.pythonhosted.org/packages/c5/4d/a114bdd186903426bd9c1e9c3700761ec5eaac260fa3dfdef14bf84b751b/pypi_attestations-0.0.19.tar.gz"
@@ -228,6 +232,11 @@ def test_inspect_command(caplog: pytest.LogCaptureFixture) -> None:
 
     run_main_with_command(["inspect", "--dump-bytes", publish_attestation_path.as_posix()])
     assert "Signature:" in caplog.text
+
+    # Happy path with annotation that contains rekor2 entry and a timestamp
+    run_main_with_command(["inspect", rekor2_attestation_path.as_posix()])
+    assert "Entry type: dsse 0.0.2" in caplog.text
+    assert "Timestamps (1):" in caplog.text
 
     # Failure paths
     caplog.clear()

@@ -75,6 +75,15 @@ test-nocoverage: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
 		pytest $(T) $(TEST_ARGS)
 
+# test-offline requires firejail
+.PHONY: test-offline
+test-offline: $(VENV)/pyvenv.cfg
+	# ensure trust root is updated, then run tests inside no-network firejail
+	. $(VENV_BIN)/activate && \
+		python -m sigstore plumbing update-trust-root && \
+		python -m sigstore --staging plumbing update-trust-root && \
+		firejail --noprofile --net=none --env=TEST_OFFLINE=1 pytest $(T) $(TEST_ARGS)
+
 .PHONY: doc
 doc: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
