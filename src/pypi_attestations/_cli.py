@@ -156,8 +156,13 @@ def _parser() -> argparse.ArgumentParser:
     verify_pypi_command.add_argument(
         "--repository",
         type=str,
-        required=True,
         help="URL of the publishing GitHub or GitLab repository",
+    )
+
+    verify_pypi_command.add_argument(
+        "--gcp-service-account",
+        type=str,
+        help="Email of the Google Cloud service account",
     )
 
     verify_pypi_command.add_argument(
@@ -576,9 +581,27 @@ def _verify_pypi(args: argparse.Namespace) -> None:
     try:
         for attestation_bundle in provenance.attestation_bundles:
             publisher = attestation_bundle.publisher
-            if isinstance(publisher, GooglePublisher):  # pragma: no cover
-                _die("This CLI doesn't support Google Cloud-based publisher verification")
-            _check_repository_identity(expected_repository_url=args.repository, publisher=publisher)
+            if isinstance(publisher, GooglePublisher):
+                if not args.gcp_service_account:
+                    _die(
+                        "Provenance signed by a Google Cloud account, but no service account "
+                        "provided; use '--gcp-service-account'"
+                    )
+                if publisher.email != args.gcp_service_account:
+                    _die(
+                        f"Verification failed: provenance was signed by service account "
+                        f'"{publisher.email}", expected "{args.gcp_service_account}"'
+                    )
+            else:
+                if not args.repository:
+                    _die(
+                        "Provenance signed by a repository, but no repository URL provided; "
+                        "use '--repository'"
+                    )
+                _check_repository_identity(
+                    expected_repository_url=args.repository, publisher=publisher
+                )
+
             policy = publisher._as_policy()  # noqa: SLF001
             for attestation in attestation_bundle.attestations:
                 attestation.verify(policy, dist, staging=args.staging, offline=args.offline)

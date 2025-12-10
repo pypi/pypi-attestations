@@ -46,6 +46,10 @@ gl_signed_dist_path = _ASSETS / "gitlab_oidc_project-0.0.3.tar.gz"
 gl_signed_dist = impl.Distribution.from_file(gl_signed_dist_path)
 gl_attestation_path = _ASSETS / "gitlab_oidc_project-0.0.3.tar.gz.publish.attestation"
 
+gcb_signed_dist_path = _ASSETS / "gcb_attestation_test-0.0.0.tar.gz"
+gcb_signed_dist = impl.Distribution.from_file(gcb_signed_dist_path)
+gcb_attestation_path = _ASSETS / "gcb_attestation_test-0.0.0.tar.gz.provenance"
+
 
 class TestDistribution:
     def test_from_file_nonexistent(self, tmp_path: Path) -> None:
@@ -198,6 +202,17 @@ class TestAttestation:
         attestation = impl.Attestation.model_validate_json(gl_attestation_path.read_bytes())
         with pytest.raises(impl.VerificationError, match=r"Build Config URI .+ does not match"):
             attestation.verify(publisher, gl_signed_dist, offline=True)
+
+    def test_verify_from_google_publisher(self) -> None:
+        publisher = impl.GooglePublisher(
+            email="919436158236-compute@developer.gserviceaccount.com",
+        )
+
+        provenance = impl.Provenance.model_validate_json(gcb_attestation_path.read_bytes())
+        attestation = provenance.attestation_bundles[0].attestations[0]
+        predicate_type, predicate = attestation.verify(publisher, gcb_signed_dist, offline=True)
+        assert predicate_type == "https://docs.pypi.org/attestations/publish/v1"
+        assert predicate is None
 
     def test_verify(self) -> None:
         # Our checked-in asset has this identity.
