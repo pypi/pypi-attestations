@@ -144,10 +144,6 @@ pypi-attestations verify attestation  \
 
 ### Verifying a PyPI package
 
-> [!IMPORTANT]
-> This subcommand supports publish attestations from GitHub and GitLab.
-> It **does not currently support** Google Cloud-based publish attestations.
-
 > [!NOTE]
 > The package to verify can be passed either as a path to a local file, a
 > `pypi:` prefixed filename (e.g: 'pypi:sampleproject-1.0.0-py3-none-any.whl'),
