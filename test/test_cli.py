@@ -50,6 +50,12 @@ sigstore_bundle_path = _ASSETS / "pypi_attestation_models-0.0.4a2.tar.gz.sigstor
 converted_sigstore_bundle_path = _ASSETS / "pypi_attestation_models-0.0.4a2.tar.gz.attestation"
 
 
+# gcb assets
+gcb_artifact_path = _ASSETS / "gcb_attestation_test-0.0.0.tar.gz"
+gcb_provenance_path = _ASSETS / "gcb_attestation_test-0.0.0.tar.gz.provenance"
+gcb_service_account = "919436158236-compute@developer.gserviceaccount.com"
+
+
 def run_main_with_command(cmd: list[str]) -> None:
     """Helper method to run the main function with a given command."""
     sys.argv[1:] = cmd
@@ -939,3 +945,70 @@ def test_convert_command_existent_output_file(caplog: pytest.LogCaptureFixture) 
             )
 
     assert "Output file already exists" in caplog.text
+
+
+def test_verify_pypi_command_gcb_ok(caplog: pytest.LogCaptureFixture) -> None:
+    run_main_with_command(
+        [
+            "verify",
+            "pypi",
+            "--offline",
+            "--gcp-service-account",
+            gcb_service_account,
+            "--provenance-file",
+            gcb_provenance_path.as_posix(),
+            gcb_artifact_path.as_posix(),
+        ]
+    )
+    assert "OK: gcb_attestation_test-0.0.0.tar.gz" in caplog.text
+
+
+def test_verify_pypi_command_gcb_no_service_account(caplog: pytest.LogCaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "verify",
+                "pypi",
+                "--offline",
+                "--provenance-file",
+                gcb_provenance_path.as_posix(),
+                gcb_artifact_path.as_posix(),
+            ]
+        )
+    assert (
+        "Provenance signed by a Google Cloud account, but no service account provided"
+        in caplog.text
+    )
+
+
+def test_verify_pypi_command_gcb_wrong_service_account(caplog: pytest.LogCaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "verify",
+                "pypi",
+                "--offline",
+                "--gcp-service-account",
+                "wrong-account@wrong.com",
+                "--provenance-file",
+                gcb_provenance_path.as_posix(),
+                gcb_artifact_path.as_posix(),
+            ]
+        )
+    assert "Verification failed: provenance was signed by service account" in caplog.text
+
+
+def test_verify_pypi_command_github_no_repository(caplog: pytest.LogCaptureFixture) -> None:
+    # Use a github-signed attestation to check the other path
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "verify",
+                "pypi",
+                "--offline",
+                "--provenance-file",
+                pypi_sdist_provenance_path.as_posix(),
+                pypi_sdist_path.as_posix(),
+            ]
+        )
+    assert "Provenance signed by a repository, but no repository URL provided" in caplog.text
