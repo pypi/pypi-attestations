@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for Google Cloud Build attestations has been added to the CLI.
+
 ### Changed
 
 - The minimum Python version required is now `3.10`
