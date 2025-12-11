@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.29]
+
 ### Added
 
-- Support for Google Cloud Build attestations has been added to the CLI.
+- Support for verifying Google Cloud attestations has been added to the CLI.
 
 ### Changed
 
@@ -335,7 +337,8 @@ This is a corrective release for [0.0.14].
 
 - Initial implementation
 
-[Unreleased]: https://github.com/pypi/pypi-attestations/compare/v0.0.28...HEAD
+[Unreleased]: https://github.com/pypi/pypi-attestations/compare/v0.0.29...HEAD
+[0.0.29]: https://github.com/pypi/pypi-attestations/compare/v0.0.28...v0.0.29
 [0.0.28]: https://github.com/pypi/pypi-attestations/compare/v0.0.27...v0.0.28
 [0.0.27]: https://github.com/pypi/pypi-attestations/compare/v0.0.26...v0.0.27
 [0.0.26]: https://github.com/pypi/pypi-attestations/compare/v0.0.25...v0.0.26
