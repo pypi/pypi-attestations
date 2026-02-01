@@ -23,9 +23,7 @@ from pypi_attestations._cli import (
 )
 from pypi_attestations._impl import Attestation, AttestationError, ConversionError, Distribution
 
-ONLINE_TESTS = (
-    "CI" in os.environ or "EXTREMELY_DANGEROUS_PUBLIC_OIDC_BEACON" in os.environ
-) and "TEST_OFFLINE" not in os.environ
+ONLINE_TESTS = "CI" in os.environ and "TEST_OFFLINE" not in os.environ
 
 online = pytest.mark.skipif(not ONLINE_TESTS, reason="online tests not enabled")
 

@@ -38,10 +38,6 @@ jobs:
 
       - name: test
         run: make test INSTALL_EXTRA=test
-        env:
-          # Use the pubic OIDC beacon for online tests, rather than relying
-          # on the workflow's own ID token.
-          EXTREMELY_DANGEROUS_PUBLIC_OIDC_BEACON: 1
 
   test-offline:
     runs-on: ubuntu-latest
