@@ -386,6 +386,11 @@ def _get_provenance_from_pypi(dist: Distribution) -> Provenance:
         )
 
     try:
+        # Use response.content instead of response.text here, because requests
+        # will try to detect the encoding, normally using its explicit
+        # dependency charset-normalizer, which detects UTF-8, but preferring to
+        # use chardet if that is available, which wrongly detects Windows-1252.
+        # See https://github.com/pypi/pypi-attestations/issues/171.
         return Provenance.model_validate_json(response.content)
     except ValidationError as validation_error:
         _die(f"Invalid provenance: {validation_error}")
