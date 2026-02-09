@@ -700,7 +700,7 @@ def test_verify_pypi_error_validating_provenance(
         "_get_distribution_from_arg",
         lambda arg, offline: Distribution(name=pypi_wheel_filename, digest="a"),
     )
-    response = stub(status_code=200, raise_for_status=lambda: None, content="not json")
+    response = stub(status_code=200, raise_for_status=lambda: None, content=b"not json")
     response.status_code = 200
     monkeypatch.setattr(requests, "get", lambda url: response)
     with pytest.raises(SystemExit):
