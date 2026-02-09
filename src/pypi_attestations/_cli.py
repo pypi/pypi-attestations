@@ -386,7 +386,7 @@ def _get_provenance_from_pypi(dist: Distribution) -> Provenance:
         )
 
     try:
-        return Provenance.model_validate_json(response.text)
+        return Provenance.model_validate_json(response.content)
     except ValidationError as validation_error:
         _die(f"Invalid provenance: {validation_error}")
 
