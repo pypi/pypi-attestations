@@ -77,7 +77,8 @@ strict_equality = true
 warn_no_return = true
 warn_redundant_casts = true
 warn_return_any = true
-warn_unreachable = true
+# https://github.com/python/mypy/issues/21132
+# warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
 
