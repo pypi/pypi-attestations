@@ -164,7 +164,7 @@ pypi-attestations verify pypi --repository https://github.com/sigstore/sigstore-
   ~/Downloads/sigstore-3.6.1-py3-none-any.whl
 ```
 
-This command downloads the artifact and its provenance from PyPI. The artifact
+This command downloads the artifact, if needed, and its provenance from PyPI. The artifact
 is then verified against the provenance, while also checking that the provenance's
 signing identity matches the repository specified by the user.
 

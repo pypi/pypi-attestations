@@ -150,8 +150,10 @@ def _parser() -> argparse.ArgumentParser:
         "distribution_file",
         metavar="PYPI_FILE",
         type=str,
-        help="PyPI file to verify, can be either: (1) pypi:$FILE_NAME (e.g. "
-        "pypi:sampleproject-1.0.0.tar.gz) or (2) A direct URL to files.pythonhosted.org",
+        help="PyPI file to verify, can be: "
+        "(1) a path to a local file, "
+        "(2) pypi:$FILE_NAME (e.g. pypi:sampleproject-1.0.0.tar.gz) or "
+        "(3) A direct URL to files.pythonhosted.org",
     )
 
     verify_pypi_command.add_argument(
