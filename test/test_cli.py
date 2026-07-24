@@ -627,8 +627,10 @@ def test_verify_pypi_validation_fails(
         (404, f'Provenance for file "{pypi_wheel_filename}" was not found'),
         (
             500,
-            "Unexpected error while downloading provenance file from PyPI, Integrity API "
-            "returned status code: 500",
+            (
+                "Unexpected error while downloading provenance file from PyPI, Integrity API "
+                "returned status code: 500"
+            ),
         ),
     ],
 )
@@ -732,13 +734,17 @@ def test_verify_pypi_error_validating_provenance(
     [
         (
             "https://gitlab.com/trailofbits/pypi-attestations",
-            "Verification failed: provenance was signed by a github.com repository, but expected "
-            "a gitlab.com repository",
+            (
+                "Verification failed: provenance was signed by a github.com repository, "
+                "but expected a gitlab.com repository"
+            ),
         ),
         (
             "https://github.com/other/repo",
-            "Verification failed: provenance was signed by repository "
-            '"trailofbits/pypi-attestations", expected "other/repo"',
+            (
+                "Verification failed: provenance was signed by repository "
+                '"trailofbits/pypi-attestations", expected "other/repo"'
+            ),
         ),
     ],
 )
