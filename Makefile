@@ -36,12 +36,18 @@ else
 	COV_ARGS := --fail-under 100
 endif
 
+.PHONY: help
+help: ## Display this help
+	@echo "Usage: make [target]"
+	@echo
+	@grep -hE '^[a-z][-a-z ]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
 .PHONY: all
 all:
 	@echo "Run my targets individually!"
 
 .PHONY: dev
-dev: $(VENV)/pyvenv.cfg
+dev: $(VENV)/pyvenv.cfg ## Create development virtual environment
 
 $(VENV)/pyvenv.cfg: pyproject.toml
 	# Create our Python 3 virtual environment
@@ -50,7 +56,7 @@ $(VENV)/pyvenv.cfg: pyproject.toml
 	$(VENV_BIN)/python -m pip install -e .[$(INSTALL_EXTRA)]
 
 .PHONY: lint
-lint: $(VENV)/pyvenv.cfg
+lint: $(VENV)/pyvenv.cfg ## Run linters (Ruff, mypy, interrogate)
 	. $(VENV_BIN)/activate && \
 		ruff format --check $(ALL_PY_SRCS) && \
 		ruff check $(ALL_PY_SRCS) && \
@@ -59,32 +65,32 @@ lint: $(VENV)/pyvenv.cfg
 		interrogate -c pyproject.toml .
 
 .PHONY: reformat
-reformat:
+reformat: ## Reformat source code with Ruff
 	. $(VENV_BIN)/activate && \
 		ruff check --fix $(ALL_PY_SRCS) && \
 		ruff format $(ALL_PY_SRCS)
 
 .PHONY: test tests
-test tests: $(VENV)/pyvenv.cfg
+test tests: $(VENV)/pyvenv.cfg ## Run tests with coverage
 	. $(VENV_BIN)/activate && \
 		pytest --cov=$(PY_IMPORT) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: test-nocoverage
-test-nocoverage: $(VENV)/pyvenv.cfg
+test-nocoverage: $(VENV)/pyvenv.cfg ## Run tests without coverage
 	. $(VENV_BIN)/activate && \
 		pytest $(T) $(TEST_ARGS)
 
 .PHONY: doc
-doc: $(VENV)/pyvenv.cfg
+doc: $(VENV)/pyvenv.cfg ## Generate documentation with pdoc
 	. $(VENV_BIN)/activate && \
 		pdoc -o html $(PY_IMPORT)
 
 .PHONY: package
-package: $(VENV)/pyvenv.cfg
+package: $(VENV)/pyvenv.cfg ## Build distribution packages
 	. $(VENV_BIN)/activate && \
 		python3 -m build
 
 .PHONY: edit
-edit:
+edit: ## Open all source files in editor
 	$(EDITOR) $(ALL_PY_SRCS)
