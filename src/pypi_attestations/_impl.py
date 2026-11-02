@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import base64
 import json
-from enum import Enum
+from enum import StrEnum
+from hashlib import file_digest
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType
 
 import packaging
@@ -23,7 +24,6 @@ from packaging.utils import parse_sdist_filename, parse_wheel_filename
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_snake
 from pydantic_core import ValidationError
-from sigstore._utils import _sha256_streaming
 from sigstore.dsse import DigestSet, StatementBuilder, Subject, _Statement
 from sigstore.dsse import Envelope as DsseEnvelope
 from sigstore.errors import Error as SigstoreError
@@ -104,14 +104,12 @@ class Distribution(BaseModel):
         """Construct a `Distribution` from the given path."""
         name = dist.name
         with dist.open(mode="rb", buffering=0) as io:
-            # Replace this with `hashlib.file_digest()` once
-            # our minimum supported Python is >=3.11
-            digest = _sha256_streaming(io).hex()
+            digest = file_digest(io, "sha256").hexdigest()
 
         return cls(name=name, digest=digest)
 
 
-class AttestationType(str, Enum):
+class AttestationType(StrEnum):
     """Attestation types known to PyPI."""
 
     SLSA_PROVENANCE_V1 = "https://slsa.dev/provenance/v1"

@@ -21,7 +21,7 @@ dependencies = [
     "sigstore >= 4.5, < 5.0",
     "sigstore-models",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [tool.setuptools.dynamic]
 version = { attr = "pypi_attestations.__version__" }
@@ -63,7 +63,7 @@ omit = ["src/pypi_attestations/__main__.py"]
 mypy_path = "src"
 packages = "pypi_attestations"
 plugins = ["pydantic.mypy"]
-python_version = "3.10"
+python_version = "3.11"
 allow_redefinition = true
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -83,7 +83,7 @@ warn_unused_ignores = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "ANN", "D", "COM", "ISC", "TCH", "SLF"]
