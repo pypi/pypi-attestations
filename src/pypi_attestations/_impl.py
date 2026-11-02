@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import base64
 import json
-from enum import Enum
+from enum import StrEnum
 from hashlib import file_digest
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType
 
@@ -109,7 +109,7 @@ class Distribution(BaseModel):
         return cls(name=name, digest=digest)
 
 
-class AttestationType(str, Enum):
+class AttestationType(StrEnum):
     """Attestation types known to PyPI."""
 
     SLSA_PROVENANCE_V1 = "https://slsa.dev/provenance/v1"

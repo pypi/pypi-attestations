@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The minimum Python version required is now `3.11`.
 
+### Fixed
+
+- Converting an `AttestationType` member to a string now returns its predicate
+  URL instead of its enum name.
+
 ## [0.0.31]
 
 ### Changed
