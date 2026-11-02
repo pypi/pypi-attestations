@@ -17,10 +17,9 @@ import packaging.version
 import sigstore.errors
 from annotated_types import MinLen  # noqa: TCH002
 from cryptography import x509
+from cryptography.hazmat import asn1
 from cryptography.hazmat.primitives import serialization
 from packaging.utils import parse_sdist_filename, parse_wheel_filename
-from pyasn1.codec.der.decoder import decode as der_decode
-from pyasn1.type.char import UTF8String
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_snake
 from pydantic_core import ValidationError
@@ -227,7 +226,7 @@ class Attestation(BaseModel):
                 # 1.3.6.1.4.1.57264.1.8 through 1.3.6.1.4.1.57264.1.22 are formatted as DER-encoded
                 # strings; the ASN.1 tag is UTF8String (0x0C) and the tag class is universal.
                 value = extension.value.value
-                claims[extension.oid.dotted_string] = _der_decode_utf8string(value)
+                claims[extension.oid.dotted_string] = asn1.decode_der(str, value)
 
         return claims
 
@@ -399,11 +398,6 @@ class Envelope(BaseModel):
     """
 
 
-def _der_decode_utf8string(der: bytes) -> str:
-    """Decode a DER-encoded UTF8String."""
-    return der_decode(der, UTF8String)[0].decode()  # type: ignore[no-any-return]
-
-
 _SdistName = tuple[packaging.utils.NormalizedName, packaging.version.Version]
 _BdistName = tuple[
     packaging.utils.NormalizedName,
@@ -485,7 +479,7 @@ class _GitHubTrustedPublisherPolicy:
         #  where OWNER/REPO and WORKFLOW are controlled by the TP identity,
         #  and REF is controlled by the certificate's own claims.
         build_config_uri = cert.extensions.get_extension_for_oid(policy._OIDC_BUILD_CONFIG_URI_OID)  # noqa: SLF001
-        raw_build_config_uri = _der_decode_utf8string(build_config_uri.value.public_bytes())
+        raw_build_config_uri = asn1.decode_der(str, build_config_uri.value.public_bytes())
 
         # (2) Extract the source repo digest and ref.
         # We require at least one of these to be present.
@@ -494,7 +488,7 @@ class _GitHubTrustedPublisherPolicy:
             source_repo_digest = cert.extensions.get_extension_for_oid(
                 policy._OIDC_SOURCE_REPOSITORY_DIGEST_OID  # noqa: SLF001
             )
-            suffixes.append(_der_decode_utf8string(source_repo_digest.value.public_bytes()))
+            suffixes.append(asn1.decode_der(str, source_repo_digest.value.public_bytes()))
         except x509.ExtensionNotFound:
             pass
 
@@ -502,7 +496,7 @@ class _GitHubTrustedPublisherPolicy:
             source_repo_ref = cert.extensions.get_extension_for_oid(
                 policy._OIDC_SOURCE_REPOSITORY_REF_OID  # noqa: SLF001
             )
-            suffixes.append(_der_decode_utf8string(source_repo_ref.value.public_bytes()))
+            suffixes.append(asn1.decode_der(str, source_repo_ref.value.public_bytes()))
         except x509.ExtensionNotFound:
             pass
 
@@ -592,18 +586,18 @@ class _GitLabTrustedPublisherPolicy:
         #  where NAMESPACE/PROJECT and WORKFLOW_FILEPATH are controlled by the TP identity,
         #  and REF is controlled by the certificate's own claims.
         build_config_uri = cert.extensions.get_extension_for_oid(policy._OIDC_BUILD_CONFIG_URI_OID)  # noqa: SLF001
-        raw_build_config_uri = _der_decode_utf8string(build_config_uri.value.public_bytes())
+        raw_build_config_uri = asn1.decode_der(str, build_config_uri.value.public_bytes())
 
         # (2) Extract the source repo digest and ref.
         source_repo_digest = cert.extensions.get_extension_for_oid(
             policy._OIDC_SOURCE_REPOSITORY_DIGEST_OID  # noqa: SLF001
         )
-        sha = _der_decode_utf8string(source_repo_digest.value.public_bytes())
+        sha = asn1.decode_der(str, source_repo_digest.value.public_bytes())
 
         source_repo_ref = cert.extensions.get_extension_for_oid(
             policy._OIDC_SOURCE_REPOSITORY_REF_OID  # noqa: SLF001
         )
-        ref = _der_decode_utf8string(source_repo_ref.value.public_bytes())
+        ref = asn1.decode_der(str, source_repo_ref.value.public_bytes())
 
         # (3)-(4): Build the expected URIs and compare them
         for suffix in [sha, ref]:
@@ -704,7 +698,7 @@ class _CircleCITrustedPublisherPolicy:
         build_signer_uri = cert.extensions.get_extension_for_oid(
             policy._OIDC_BUILD_SIGNER_URI_OID  # noqa: SLF001
         )
-        raw_build_signer_uri = _der_decode_utf8string(build_signer_uri.value.public_bytes())
+        raw_build_signer_uri = asn1.decode_der(str, build_signer_uri.value.public_bytes())
 
         expected_build_signer_uri = (
             f"https://circleci.com/api/v2/projects/{self._project_id}/"

@@ -11,6 +11,7 @@ import pytest
 import sigstore
 import sigstore.errors
 from cryptography import x509
+from cryptography.hazmat import asn1
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import Base64Bytes, BaseModel, TypeAdapter, ValidationError
@@ -863,9 +864,6 @@ class TestCircleCIPublisher:
         cert_path = _ASSETS / "circleci-oidc.pem"
         orig_cert = x509.load_pem_x509_certificate(cert_path.read_bytes())
 
-        from pyasn1.codec.der.encoder import encode as der_encode
-        from pyasn1.type.char import UTF8String
-
         builder = (
             x509.CertificateBuilder()
             .subject_name(orig_cert.subject)
@@ -881,7 +879,7 @@ class TestCircleCIPublisher:
                 builder = builder.add_extension(
                     x509.UnrecognizedExtension(
                         policy._OIDC_ISSUER_V2_OID,
-                        der_encode(UTF8String("https://wrong-issuer.example.com")),
+                        asn1.encode_der("https://wrong-issuer.example.com"),
                     ),
                     critical=False,
                 )
