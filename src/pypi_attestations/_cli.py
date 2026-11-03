@@ -223,22 +223,22 @@ def _parser() -> argparse.ArgumentParser:
 
     convert_command = subcommands.add_parser(
         name="convert",
-        help="Convert a Sigstore bundle into a PEP 740 attestation",
+        help="Convert between a Sigstore bundle and a PEP 740 attestation",
         parents=[parent_parser],
     )
 
     convert_command.add_argument(
-        "bundle_file",
-        metavar="BUNDLE_FILE",
+        "file",
+        metavar="FILE",
         type=Path,
-        help="The Sigstore bundle to convert",
+        help="The Sigstore bundle or PEP 740 attestation to convert",
     )
 
     convert_command.add_argument(
         "--output-file",
         required=True,
         type=Path,
-        help="The output file to write the attestation to",
+        help="The output file to write the converted file to",
     )
     return parser
 
@@ -654,23 +654,54 @@ def _verify_pypi(args: argparse.Namespace) -> None:
 
 
 def _convert(args: argparse.Namespace) -> None:
-    """Convert a Sigstore bundle into a PEP 740 attestation."""
-    if not args.bundle_file.exists():
-        _die(f"Bundle file does not exist: {args.bundle_file}")
+    """Convert between a Sigstore bundle and a PEP 740 attestation.
+
+    The direction of the conversion is determined by sniffing the input
+    and output files' suffixes: Sigstore bundles use `.sigstore`, while
+    PEP 740 attestations use `.attestation`.
+    """
+    to_attestation = args.file.suffix == ".sigstore" and args.output_file.suffix == ".attestation"
+    to_bundle = args.file.suffix == ".attestation" and args.output_file.suffix == ".sigstore"
+
+    if not (to_attestation or to_bundle):
+        _die(
+            f"Cannot convert {args.file} to {args.output_file}: expected a Sigstore "
+            "bundle (`.sigstore`) and a PEP 740 attestation (`.attestation`), "
+            "in either order"
+        )
+
+    if not args.file.exists():
+        if to_bundle:
+            _die(f"Attestation file does not exist: {args.file}")
+        _die(f"Bundle file does not exist: {args.file}")
 
     if args.output_file.exists():
         _die(f"Output file already exists: {args.output_file}")
 
-    try:
-        sigstore_bundle = Bundle.from_json(args.bundle_file.read_bytes())
-        attestation_object = Attestation.from_bundle(sigstore_bundle)
-    except (InvalidBundle, json.JSONDecodeError) as e:
-        _die(f"Invalid Sigstore bundle: {e}")
-    except ConversionError as e:
-        _die(f"Failed to convert Sigstore bundle: {e}")
+    if to_attestation:
+        try:
+            sigstore_bundle = Bundle.from_json(args.file.read_bytes())
+            attestation_object = Attestation.from_bundle(sigstore_bundle)
+        except (InvalidBundle, json.JSONDecodeError) as e:
+            _die(f"Invalid Sigstore bundle: {e}")
+        except ConversionError as e:
+            _die(f"Failed to convert Sigstore bundle: {e}")
 
-    args.output_file.write_text(attestation_object.model_dump_json())
-    _logger.info(f"Converted Sigstore bundle to attestation: {args.output_file}")
+        args.output_file.write_text(attestation_object.model_dump_json())
+        _logger.info(f"Converted Sigstore bundle to attestation: {args.output_file}")
+    else:
+        try:
+            attestation_object = Attestation.model_validate_json(args.file.read_bytes())
+        except ValidationError as e:
+            _die(f"Invalid attestation: {e}")
+
+        try:
+            sigstore_bundle = attestation_object.to_bundle()
+        except ConversionError as e:
+            _die(f"Failed to convert attestation: {e}")
+
+        args.output_file.write_text(sigstore_bundle.to_json())
+        _logger.info(f"Converted attestation to Sigstore bundle: {args.output_file}")
 
 
 def main() -> None:

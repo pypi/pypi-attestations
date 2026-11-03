@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The `convert` subcommand can now also convert PEP 740 attestations into
+  Sigstore bundles; the conversion direction is determined by the input and
+  output files' suffixes
+  ([#111](https://github.com/pypi/pypi-attestations/issues/111)).
+
 ### Changed
 
 - The minimum Python version required is now `3.11`.

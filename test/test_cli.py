@@ -12,6 +12,7 @@ import pytest
 import requests
 import sigstore.oidc
 from pretend import raiser, stub
+from sigstore.models import Bundle
 from sigstore.oidc import IdentityError, IdentityToken
 
 import pypi_attestations._cli
@@ -957,6 +958,172 @@ def test_convert_command_existent_output_file(caplog: pytest.LogCaptureFixture) 
             )
 
     assert "Output file already exists" in caplog.text
+
+
+def test_convert_command_attestation_to_bundle(caplog: pytest.LogCaptureFixture) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_bundle_path = Path(tmpdir) / "temp.sigstore"
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                output_bundle_path.as_posix(),
+                converted_sigstore_bundle_path.as_posix(),
+            ]
+        )
+        assert output_bundle_path.is_file()
+        converted_bundle = Bundle.from_json(output_bundle_path.read_bytes())
+        known_good_bundle = Bundle.from_json(sigstore_bundle_path.read_bytes())
+
+        assert converted_bundle._inner.dsse_envelope == known_good_bundle._inner.dsse_envelope
+        assert converted_bundle.signing_certificate == known_good_bundle.signing_certificate
+        assert (
+            converted_bundle.log_entry._inner.to_dict()
+            == known_good_bundle.log_entry._inner.to_dict()
+        )
+
+
+def test_convert_command_roundtrip(caplog: pytest.LogCaptureFixture) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # bundle -> attestation -> bundle preserves the envelope
+        roundtripped_attestation_path = Path(tmpdir) / "roundtripped.attestation"
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                roundtripped_attestation_path.as_posix(),
+                sigstore_bundle_path.as_posix(),
+            ]
+        )
+        roundtripped_bundle_path = Path(tmpdir) / "roundtripped.sigstore"
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                roundtripped_bundle_path.as_posix(),
+                roundtripped_attestation_path.as_posix(),
+            ]
+        )
+        roundtripped_bundle = Bundle.from_json(roundtripped_bundle_path.read_bytes())
+        known_good_bundle = Bundle.from_json(sigstore_bundle_path.read_bytes())
+        roundtripped_envelope = roundtripped_bundle._inner.dsse_envelope
+        known_good_envelope = known_good_bundle._inner.dsse_envelope
+        assert roundtripped_envelope is not None
+        assert known_good_envelope is not None
+        assert roundtripped_envelope.payload == known_good_envelope.payload
+        assert roundtripped_envelope.signatures[0].sig == known_good_envelope.signatures[0].sig
+
+        # attestation -> bundle -> attestation is semantically identical
+        roundtripped_bundle_path_2 = Path(tmpdir) / "roundtripped2.sigstore"
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                roundtripped_bundle_path_2.as_posix(),
+                converted_sigstore_bundle_path.as_posix(),
+            ]
+        )
+        roundtripped_attestation_path_2 = Path(tmpdir) / "roundtripped2.attestation"
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                roundtripped_attestation_path_2.as_posix(),
+                roundtripped_bundle_path_2.as_posix(),
+            ]
+        )
+        assert Attestation.model_validate_json(
+            roundtripped_attestation_path_2.read_bytes()
+        ) == Attestation.model_validate_json(converted_sigstore_bundle_path.read_bytes())
+
+
+def test_convert_command_invalid_attestation(caplog: pytest.LogCaptureFixture) -> None:
+    with tempfile.NamedTemporaryFile(suffix=".attestation") as f:
+        f.write(b"not a valid attestation")
+        f.flush()
+        with pytest.raises(SystemExit):
+            run_main_with_command(
+                [
+                    "convert",
+                    "--output-file",
+                    "temp.sigstore",
+                    f.name,
+                ]
+            )
+
+    assert not Path("temp.sigstore").exists()
+    assert "Invalid attestation" in caplog.text
+
+
+def test_convert_command_attestation_conversion_error(
+    caplog: pytest.LogCaptureFixture, tmp_path: Path
+) -> None:
+    # An attestation with an invalid transparency log entry fails in `to_bundle`
+    attestation = Attestation.model_validate_json(converted_sigstore_bundle_path.read_bytes())
+    attestation.verification_material.transparency_entries[0].clear()
+    invalid_attestation_path = tmp_path / "invalid.attestation"
+    invalid_attestation_path.write_text(attestation.model_dump_json())
+
+    output_bundle_path = tmp_path / "temp.sigstore"
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                output_bundle_path.as_posix(),
+                invalid_attestation_path.as_posix(),
+            ]
+        )
+
+    assert not output_bundle_path.exists()
+    assert "Failed to convert attestation" in caplog.text
+
+
+def test_convert_command_nonexistent_attestation(caplog: pytest.LogCaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                "temp.sigstore",
+                "temp.attestation",
+            ]
+        )
+
+    assert not Path("temp.sigstore").exists()
+    assert "Attestation file does not exist" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "input_suffix,output_suffix",
+    [
+        (".sigstore", ".sigstore"),
+        (".attestation", ".attestation"),
+        (".json", ".attestation"),
+        (".sigstore", ".json"),
+    ],
+)
+def test_convert_command_mismatched_suffixes(
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+    input_suffix: str,
+    output_suffix: str,
+) -> None:
+    input_path = tmp_path / f"input{input_suffix}"
+    input_path.touch()
+    output_path = tmp_path / f"output{output_suffix}"
+    with pytest.raises(SystemExit):
+        run_main_with_command(
+            [
+                "convert",
+                "--output-file",
+                output_path.as_posix(),
+                input_path.as_posix(),
+            ]
+        )
+
+    assert not output_path.exists()
+    assert "Cannot convert" in caplog.text
 
 
 def test_verify_pypi_command_gcb_ok(caplog: pytest.LogCaptureFixture) -> None:

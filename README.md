@@ -102,7 +102,7 @@ positional arguments:
     sign         Sign one or more inputs
     verify       Verify one or more inputs
     inspect      Inspect one or more inputs
-    convert      Convert a Sigstore bundle into a PEP 740 attestation
+    convert      Convert between a Sigstore bundle and a PEP 740 attestation
 
 options:
   -h, --help     show this help message and exit
@@ -168,11 +168,18 @@ This command downloads the artifact, if needed, and its provenance from PyPI. Th
 is then verified against the provenance, while also checking that the provenance's
 signing identity matches the repository specified by the user.
 
-### Converting a Sigstore bundle into a PEP 740 Attestation
+### Converting between Sigstore bundles and PEP 740 Attestations
+
+The conversion direction is determined by the input and output files'
+suffixes: `.sigstore` files are Sigstore bundles, and `.attestation`
+files are PEP 740 attestations.
 
 ```bash
 pypi-attestations convert --output-file /tmp/rfc8785-0.1.2-py3-none-any.whl.publish.attestation  \
   test/assets/rfc8785-0.1.2-py3-none-any.whl.sigstore
+
+pypi-attestations convert --output-file /tmp/rfc8785-0.1.2-py3-none-any.whl.sigstore  \
+  /tmp/rfc8785-0.1.2-py3-none-any.whl.publish.attestation
 ```
 
 
