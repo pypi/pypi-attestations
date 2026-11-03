@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Converting an `AttestationType` member to a string now returns its predicate
   URL instead of its enum name.
+- `Attestation.sign` now retries a small number of times when signing fails
+  with a transient connection error (such as a connection timeout while
+  submitting the entry to the transparency log), instead of failing the
+  entire signing operation on the first transient error.
 
 ## [0.0.31]
 

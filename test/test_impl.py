@@ -8,6 +8,7 @@ from typing import Any
 
 import pretend
 import pytest
+import requests
 import sigstore
 import sigstore.errors
 from cryptography import x509
@@ -18,7 +19,7 @@ from pydantic import Base64Bytes, BaseModel, TypeAdapter, ValidationError
 from sigstore.dsse import DigestSet, StatementBuilder, Subject
 from sigstore.models import Bundle, ClientTrustConfig
 from sigstore.oidc import IdentityToken
-from sigstore.sign import SigningContext
+from sigstore.sign import ExpiredCertificate, SigningContext
 from sigstore.verify import Verifier, policy
 
 import pypi_attestations._impl as impl
@@ -99,6 +100,78 @@ class TestAttestation:
         monkeypatch.setattr(sigstore.dsse.StatementBuilder, "predicate_type", dummy_predicate)
         with pytest.raises(impl.AttestationError, match="invalid statement"):
             impl.Attestation.sign(pretend.stub(), dist)
+
+    def test_sign_retries_transient_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        bundle = Bundle.from_json(dist_bundle_path.read_bytes())
+        sleep = pretend.call_recorder(lambda _: None)
+        monkeypatch.setattr("time.sleep", sleep)
+
+        attempts = 0
+
+        def sign_dsse(_: Any) -> Bundle:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                raise requests.ConnectTimeout
+            return bundle
+
+        attestation = impl.Attestation.sign(pretend.stub(sign_dsse=sign_dsse), dist)
+
+        assert attempts == 3
+        assert sleep.calls == [pretend.call(1.0), pretend.call(2.0)]
+        expected = impl.Attestation.from_bundle(bundle)
+        assert attestation.model_dump_json() == expected.model_dump_json()
+
+    def test_sign_transient_errors_exhaust_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        sleep = pretend.call_recorder(lambda _: None)
+        monkeypatch.setattr("time.sleep", sleep)
+
+        attempts = 0
+
+        def sign_dsse(_: Any) -> Bundle:
+            nonlocal attempts
+            attempts += 1
+            raise requests.ConnectTimeout
+
+        with pytest.raises(requests.ConnectTimeout):
+            impl.Attestation.sign(pretend.stub(sign_dsse=sign_dsse), dist)
+
+        assert attempts == 3
+        assert sleep.calls == [pretend.call(1.0), pretend.call(2.0)]
+
+    def test_sign_does_not_retry_permanent_errors(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        sleep = pretend.call_recorder(lambda _: None)
+        monkeypatch.setattr("time.sleep", sleep)
+
+        attempts = 0
+
+        def sign_dsse(_: Any) -> Bundle:
+            nonlocal attempts
+            attempts += 1
+            raise requests.HTTPError
+
+        with pytest.raises(requests.HTTPError):
+            impl.Attestation.sign(pretend.stub(sign_dsse=sign_dsse), dist)
+
+        assert attempts == 1
+        assert sleep.calls == []
+
+    def test_sign_expired_certificate_not_retried(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        sleep = pretend.call_recorder(lambda _: None)
+        monkeypatch.setattr("time.sleep", sleep)
+
+        attempts = 0
+
+        def sign_dsse(_: Any) -> Bundle:
+            nonlocal attempts
+            attempts += 1
+            raise ExpiredCertificate
+
+        with pytest.raises(impl.AttestationError):
+            impl.Attestation.sign(pretend.stub(sign_dsse=sign_dsse), dist)
+
+        assert attempts == 1
+        assert sleep.calls == []
 
     @online
     def test_expired_certificate(

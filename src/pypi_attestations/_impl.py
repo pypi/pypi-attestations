@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
+import time
 from enum import StrEnum
 from hashlib import file_digest
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType
@@ -15,6 +17,7 @@ import packaging
 import packaging.tags
 import packaging.utils
 import packaging.version
+import requests
 import sigstore.errors
 from annotated_types import MinLen  # noqa: TCH002
 from cryptography import x509
@@ -80,6 +83,14 @@ _FULCIO_CLAIMS_OIDS = [
     # 1.3.6.1.4.1.57264.1.22 | Source Repository Visibility At Signing
     x509.ObjectIdentifier("1.3.6.1.4.1.57264.1.22"),
 ]
+
+_logger = logging.getLogger(__name__)
+
+# The maximum number of attempts `Attestation.sign` makes for a single
+# signing operation, and the initial delay (in seconds) between attempts.
+# The delay doubles after each failed attempt.
+_MAX_SIGN_ATTEMPTS = 3
+_SIGN_RETRY_DELAY = 1.0
 
 
 class Distribution(BaseModel):
@@ -200,10 +211,31 @@ class Attestation(BaseModel):
         except SigstoreError as e:
             raise AttestationError(str(e))
 
-        try:
-            bundle = signer.sign_dsse(stmt)
-        except (ExpiredCertificate, ExpiredIdentity) as e:
-            raise AttestationError(str(e))
+        # NOTE: `signer.sign_dsse` performs network I/O (submitting the
+        # entry to the transparency log, plus any configured timestamp
+        # authority requests) that sigstore-python does not retry, so a
+        # single transient connection failure fails the entire signing
+        # operation. We retry a small number of times on transient
+        # connection errors only; every other error propagates immediately,
+        # and the final attempt's error propagates unchanged.
+        # See: https://github.com/pypi/pypi-attestations/issues/161
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                bundle = signer.sign_dsse(stmt)
+                break
+            except (ExpiredCertificate, ExpiredIdentity) as e:
+                raise AttestationError(str(e))
+            except (requests.ConnectionError, requests.Timeout) as e:
+                if attempt >= _MAX_SIGN_ATTEMPTS:
+                    raise
+                delay = _SIGN_RETRY_DELAY * 2 ** (attempt - 1)
+                _logger.warning(
+                    f"Signing attempt {attempt} failed with a transient error ({e}); "
+                    f"retrying in {delay:.0f}s"
+                )
+                time.sleep(delay)
 
         try:
             return Attestation.from_bundle(bundle)
