@@ -10,8 +10,8 @@ from collections import defaultdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import requests
 import sigstore.oidc
+import urllib3
 from cryptography import x509
 from packaging.utils import (
     InvalidSdistFilename,
@@ -284,18 +284,20 @@ def get_identity_token(args: argparse.Namespace) -> IdentityToken:
 
 def _download_file(url: str, dest: Path) -> None:
     """Download a file into a given path."""
-    response = requests.get(url, stream=True)
+    response = None
     try:
-        response.raise_for_status()  # Raise an exception for bad status codes
-    except requests.exceptions.HTTPError as e:
-        _die(f"Error downloading file: {e}")
+        response = urllib3.request("GET", url, preload_content=False)
+        if response.status >= 400:
+            _die(f"Error downloading file: {response.status} {response.reason}")
 
-    with open(dest, "wb") as f:
-        try:
-            for chunk in response.iter_content(chunk_size=1024):
+        with open(dest, "wb") as f:
+            for chunk in response.stream(1024):
                 f.write(chunk)
-        except requests.RequestException as e:
-            _die(f"Error downloading file: {e}")
+    except urllib3.exceptions.HTTPError as e:
+        _die(f"Error downloading file: {e}")
+    finally:
+        if response is not None:
+            response.release_conn()
 
 
 def _get_distribution_from_arg(arg: str, offline: bool) -> Distribution:
@@ -346,13 +348,11 @@ def _get_direct_url_from_arg(arg: str) -> URIReference:
             _die(f"Invalid distribution filename: {e}")
 
         provenance_url = f"https://pypi.org/simple/{pkg_name}"
-        response = requests.get(
-            provenance_url, headers={"Accept": "application/vnd.pypi.simple.v1+json"}
+        response = urllib3.request(
+            "GET", provenance_url, headers={"Accept": "application/vnd.pypi.simple.v1+json"}
         )
-        try:
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            _die(f"Error trying to get information for '{pkg_name}' from PyPI: {e}")
+        if response.status >= 400:
+            _die(f"Error trying to get information for '{pkg_name}' from PyPI: {response.status}")
 
         response_json = response.json()
         for file_json in response_json.get("files", []):
@@ -389,24 +389,19 @@ def _get_provenance_from_pypi(dist: Distribution) -> Provenance:
         name, version, _, _ = parse_wheel_filename(filename)
 
     provenance_url = f"https://pypi.org/integrity/{name}/{version}/{filename}/provenance"
-    response = requests.get(provenance_url)
-    if response.status_code == 403:
+    response = urllib3.request("GET", provenance_url)
+    if response.status == 403:
         _die("Access to provenance is temporarily disabled by PyPI administrators")
-    elif response.status_code == 404:
+    elif response.status == 404:
         _die(f'Provenance for file "{filename}" was not found')
-    elif response.status_code != 200:
+    elif response.status != 200:
         _die(
             f"Unexpected error while downloading provenance file from PyPI, Integrity API "
-            f"returned status code: {response.status_code}"
+            f"returned status code: {response.status}"
         )
 
     try:
-        # Use response.content instead of response.text here, because requests
-        # will try to detect the encoding, normally using its explicit
-        # dependency charset-normalizer, which detects UTF-8, but preferring to
-        # use chardet if that is available, which wrongly detects Windows-1252.
-        # See https://github.com/pypi/pypi-attestations/issues/171.
-        return Provenance.model_validate_json(response.content)
+        return Provenance.model_validate_json(response.data)
     except ValidationError as validation_error:
         _die(f"Invalid provenance: {validation_error}")
 
