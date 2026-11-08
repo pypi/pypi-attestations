@@ -6,6 +6,7 @@ import os
 import shutil
 import sys
 import tempfile
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -533,7 +534,7 @@ def test_verify_pypi_command_failure_download(
         stream=raiser(urllib3.exceptions.HTTPError("myerror")),
         release_conn=lambda: None,
     )
-    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: response)
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: nullcontext(response))
     with pytest.raises(SystemExit):
         run_main_with_command(
             [

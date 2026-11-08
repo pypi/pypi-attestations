@@ -284,20 +284,16 @@ def get_identity_token(args: argparse.Namespace) -> IdentityToken:
 
 def _download_file(url: str, dest: Path) -> None:
     """Download a file into a given path."""
-    response = None
     try:
-        response = urllib3.request("GET", url, preload_content=False)
-        if response.status >= 400:
-            _die(f"Error downloading file: {response.status} {response.reason}")
+        with urllib3.request("GET", url, preload_content=False) as response:
+            if response.status >= 400:
+                _die(f"Error downloading file: {response.status} {response.reason}")
 
-        with open(dest, "wb") as f:
-            for chunk in response.stream(1024):
-                f.write(chunk)
+            with open(dest, "wb") as f:
+                for chunk in response.stream(1024):
+                    f.write(chunk)
     except urllib3.exceptions.HTTPError as e:
         _die(f"Error downloading file: {e}")
-    finally:
-        if response is not None:
-            response.release_conn()
 
 
 def _get_distribution_from_arg(arg: str, offline: bool) -> Distribution:
