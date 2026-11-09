@@ -6,11 +6,12 @@ import os
 import shutil
 import sys
 import tempfile
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
-import requests
 import sigstore.oidc
+import urllib3
 from pretend import raiser, stub
 from sigstore.oidc import IdentityError, IdentityToken
 
@@ -523,15 +524,17 @@ def test_verify_pypi_command_failure_download(
                 pypi_wheel_url + "invalid",
             ]
         )
-    assert "Error downloading file: 404 Client Error" in caplog.text
+    assert "Error downloading file: 404 Not Found" in caplog.text
 
     caplog.clear()
 
     # Download fails
     response = stub(
-        raise_for_status=lambda: None, iter_content=raiser(requests.RequestException("myerror"))
+        status=200,
+        stream=raiser(urllib3.exceptions.HTTPError("myerror")),
+        release_conn=lambda: None,
     )
-    monkeypatch.setattr(requests, "get", lambda url, stream: response)
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: nullcontext(response))
     with pytest.raises(SystemExit):
         run_main_with_command(
             [
@@ -646,9 +649,8 @@ def test_verify_pypi_error_getting_provenance(
         "_get_distribution_from_arg",
         lambda arg, offline: Distribution(name=pypi_wheel_filename, digest="a"),
     )
-    response = requests.Response()
-    response.status_code = status_code
-    monkeypatch.setattr(requests, "get", lambda url: response)
+    response = stub(status=status_code)
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: response)
     with pytest.raises(SystemExit):
         run_main_with_command(
             [
@@ -666,8 +668,8 @@ def test_verify_pypi_error_finding_package_info(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response = stub(raise_for_status=raiser(requests.HTTPError("myerror")))
-    monkeypatch.setattr(requests, "get", lambda url, headers: response)
+    response = stub(status=500)
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: response)
     with pytest.raises(SystemExit):
         run_main_with_command(
             [
@@ -678,15 +680,15 @@ def test_verify_pypi_error_finding_package_info(
                 "pypi:somefile-1.0.0.tar.gz",
             ]
         )
-    assert "Error trying to get information for 'somefile' from PyPI: myerror" in caplog.text
+    assert "Error trying to get information for 'somefile' from PyPI: 500" in caplog.text
 
 
 def test_verify_pypi_error_finding_artifact_url(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response = stub(raise_for_status=lambda: None, json=lambda: {"files": []})
-    monkeypatch.setattr(requests, "get", lambda url, headers: response)
+    response = stub(status=200, json=lambda: {"files": []})
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: response)
     with pytest.raises(SystemExit):
         run_main_with_command(
             [
@@ -710,9 +712,8 @@ def test_verify_pypi_error_validating_provenance(
         "_get_distribution_from_arg",
         lambda arg, offline: Distribution(name=pypi_wheel_filename, digest="a"),
     )
-    response = stub(status_code=200, raise_for_status=lambda: None, content=b"not json")
-    response.status_code = 200
-    monkeypatch.setattr(requests, "get", lambda url: response)
+    response = stub(status=200, data=b"not json")
+    monkeypatch.setattr(urllib3, "request", lambda *args, **kwargs: response)
     with pytest.raises(SystemExit):
         run_main_with_command(
             [

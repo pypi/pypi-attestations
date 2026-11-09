@@ -16,10 +16,10 @@ dependencies = [
     "cryptography >= 47.0.0",
     "packaging",
     "pydantic >= 2.10.0",
-    "requests",
     "rfc3986",
     "sigstore >= 4.5, < 5.0",
     "sigstore-models",
+    "urllib3",
 ]
 requires-python = ">=3.11"
 
@@ -35,7 +35,6 @@ lint = [
     "ruff ~= 0.9",
     "mypy >= 1.0",
     "types-html5lib",
-    "types-requests",
     "types-toml",
     "interrogate",
     # linting relies on test deps, since we also typecheck our test suite
