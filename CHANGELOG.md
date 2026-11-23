@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The minimum Python version required is now `3.11`.
+- Updated the minimum supported `sigstore` dependency to `4.6`.
+- Migrated from `requests` to `urllib3`. This, together with the `sigstore`
+  version update, removes the dependency to `certifi`, which means this we now
+  use the system's trust store for all requests.
 
 ### Fixed
 
