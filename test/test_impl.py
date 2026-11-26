@@ -773,6 +773,33 @@ class TestGitHubPublisher:
 
         publisher._as_policy().verify(cert)
 
+    @pytest.mark.parametrize(
+        ("trigger_der", "message"),
+        [
+            (
+                asn1.encode_der("pull_request_target"),
+                "Forbidden GitHub workflow trigger: pull_request_target",
+            ),
+            (asn1.encode_der("issue_comment"), "Forbidden GitHub workflow trigger: issue_comment"),
+            (None, "Certificate must contain a valid Build Trigger"),
+            (b"invalid DER", "Certificate must contain a valid Build Trigger"),
+        ],
+    )
+    def test_rejects_build_trigger(self, trigger_der: bytes | None, message: str) -> None:
+        cert_path = _ASSETS / "no-source-repository-ref-extension.pem"
+        cert = x509.load_pem_x509_certificate(cert_path.read_bytes())
+        oid = policy.OIDCBuildTrigger.oid
+        extensions = [ext for ext in cert.extensions if ext.oid != oid]
+        if trigger_der is not None:
+            extensions.append(
+                x509.Extension(oid, False, x509.UnrecognizedExtension(oid, trigger_der))
+            )
+        publisher = impl.GitHubPublisher(
+            repository="SWIFTSIM/swiftgalaxy", workflow="python-publish.yml"
+        )
+        with pytest.raises(sigstore.errors.VerificationError, match=message):
+            publisher._as_policy().verify(pretend.stub(extensions=x509.Extensions(extensions)))
+
     def test_fails_cert_with_no_digest_or_ref(self) -> None:
         # To test this, we manually mangle a certificate
         # to remove the digest extension. This ends up not being a valid
