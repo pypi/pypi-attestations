@@ -458,6 +458,18 @@ class _GitHubTrustedPublisherPolicy:
         """Verify the certificate against the Trusted Publisher identity."""
         self._subpolicy.verify(cert)
 
+        # Match PyPI's forbidden GitHub triggers:
+        # https://docs.pypi.org/trusted-publishers/troubleshooting/#forbidden-triggers-on-github
+        try:
+            extension = cert.extensions.get_extension_for_oid(policy.OIDCBuildTrigger.oid)
+            trigger = asn1.decode_der(str, extension.value.public_bytes())
+        except (x509.ExtensionNotFound, ValueError) as exc:
+            raise sigstore.errors.VerificationError(
+                "Certificate must contain a valid Build Trigger"
+            ) from exc
+        if trigger in {"pull_request_target", "issue_comment"}:
+            raise sigstore.errors.VerificationError(f"Forbidden GitHub workflow trigger: {trigger}")
+
         # This process has a few annoying steps, since a Trusted Publisher
         # isn't aware of the commit or ref it runs on, while Sigstore's
         # leaf certificate claims (like GitHub Actions' OIDC claims) only
